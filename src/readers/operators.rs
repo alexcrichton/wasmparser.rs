@@ -60,11 +60,12 @@ impl<'a> OperatorsReader<'a> {
         }
     }
 
-    pub fn read_with_offset<'b>(&mut self) -> Result<(usize, Operator<'b>)>
+    pub fn read_with_offset<'b>(&mut self) -> Result<(Operator<'b>, usize)>
     where
         'a: 'b,
     {
-        Ok((self.reader.original_position(), self.read()?))
+        let pos = self.reader.original_position();
+        Ok((self.read()?, pos))
     }
 }
 
@@ -128,7 +129,7 @@ pub struct OperatorsIteratorWithOffsets<'a> {
 }
 
 impl<'a> Iterator for OperatorsIteratorWithOffsets<'a> {
-    type Item = Result<(usize, Operator<'a>)>;
+    type Item = Result<(Operator<'a>, usize)>;
 
     /// Reads content of the code section with offsets.
     ///
@@ -146,9 +147,9 @@ impl<'a> Iterator for OperatorsIteratorWithOffsets<'a> {
     /// for _ in 0..code_reader.get_count() {
     ///     let body = code_reader.read().expect("function body");
     ///     let mut op_reader = body.get_operators_reader().expect("op reader");
-    ///     let ops = op_reader.into_iter_with_offsets().collect::<Result<Vec<(usize,Operator)>>>().expect("ops");
+    ///     let ops = op_reader.into_iter_with_offsets().collect::<Result<Vec<(Operator, usize)>>>().expect("ops");
     ///     assert!(
-    ///         if let [(23, Operator::Nop), (24, Operator::End)] = ops.as_slice() { true } else { false },
+    ///         if let [(Operator::Nop, 23), (Operator::End, 24)] = ops.as_slice() { true } else { false },
     ///         "found {:?}",
     ///         ops
     ///     );

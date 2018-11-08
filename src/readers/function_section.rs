@@ -65,6 +65,9 @@ impl<'a> SectionReader for FunctionSectionReader<'a> {
     fn eof(&self) -> bool {
         self.reader.eof()
     }
+    fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
     fn original_position(&self) -> usize {
         FunctionSectionReader::original_position(self)
     }

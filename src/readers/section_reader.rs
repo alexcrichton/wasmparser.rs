@@ -20,6 +20,7 @@ pub trait SectionReader {
     fn read(&mut self) -> Result<Self::Item>;
     fn eof(&self) -> bool;
     fn original_position(&self) -> usize;
+    fn skip_to_end(&mut self);
     fn ensure_end(&self) -> Result<()> {
         if self.eof() {
             return Ok(());
@@ -40,7 +41,6 @@ where
     R: SectionReader,
 {
     reader: R,
-    err: bool,
 }
 
 impl<R> SectionIterator<R>
@@ -48,7 +48,7 @@ where
     R: SectionReader,
 {
     pub fn new(reader: R) -> SectionIterator<R> {
-        SectionIterator { reader, err: false }
+        SectionIterator { reader }
     }
 }
 
@@ -59,11 +59,13 @@ where
     type Item = Result<R::Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.err || self.reader.eof() {
+        if self.reader.eof() {
             return None;
         }
         let result = self.reader.read();
-        self.err = result.is_err();
+        if result.is_err() {
+            self.reader.skip_to_end();
+        }
         Some(result)
     }
 }
@@ -74,7 +76,6 @@ where
 {
     reader: R,
     left: u32,
-    end: bool,
 }
 
 impl<R> SectionIteratorLimited<R>
@@ -83,11 +84,7 @@ where
 {
     pub fn new(reader: R) -> SectionIteratorLimited<R> {
         let left = reader.get_count();
-        SectionIteratorLimited {
-            reader,
-            left,
-            end: false,
-        }
+        SectionIteratorLimited { reader, left }
     }
 }
 
@@ -98,21 +95,25 @@ where
     type Item = Result<R::Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.end {
+        if self.reader.eof() {
             return None;
         }
         if self.left == 0 {
             return match self.reader.ensure_end() {
                 Ok(()) => None,
                 Err(err) => {
-                    self.end = true;
+                    self.reader.skip_to_end();
                     Some(Err(err))
                 }
             };
         }
         let result = self.reader.read();
-        self.end = result.is_err();
-        self.left -= 1;
+        if result.is_err() {
+            self.reader.skip_to_end();
+            self.left = 0;
+        } else {
+            self.left -= 1;
+        }
         Some(result)
     }
 

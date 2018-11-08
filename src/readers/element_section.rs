@@ -59,6 +59,10 @@ impl<'a> ElementItemsReader<'a> {
         self.count
     }
 
+    pub fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
+
     pub fn read(&mut self) -> Result<u32> {
         self.reader.read_var_u32()
     }
@@ -72,7 +76,6 @@ impl<'a> IntoIterator for ElementItemsReader<'a> {
         ElementItemsIterator {
             reader: self,
             left: count,
-            err: false,
         }
     }
 }
@@ -80,18 +83,21 @@ impl<'a> IntoIterator for ElementItemsReader<'a> {
 pub struct ElementItemsIterator<'a> {
     reader: ElementItemsReader<'a>,
     left: u32,
-    err: bool,
 }
 
 impl<'a> Iterator for ElementItemsIterator<'a> {
     type Item = Result<u32>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.err || self.left == 0 {
+        if self.left == 0 {
             return None;
         }
         let result = self.reader.read();
-        self.err = result.is_err();
-        self.left -= 1;
+        if result.is_err() {
+            self.reader.skip_to_end();
+            self.left = 0;
+        } else {
+            self.left -= 1;
+        }
         Some(result)
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -186,6 +192,9 @@ impl<'a> SectionReader for ElementSectionReader<'a> {
     }
     fn eof(&self) -> bool {
         self.reader.eof()
+    }
+    fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
     }
     fn original_position(&self) -> usize {
         ElementSectionReader::original_position(self)

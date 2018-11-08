@@ -87,6 +87,9 @@ impl<'a> SectionReader for GlobalSectionReader<'a> {
     fn eof(&self) -> bool {
         self.reader.eof()
     }
+    fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
     fn original_position(&self) -> usize {
         GlobalSectionReader::original_position(self)
     }

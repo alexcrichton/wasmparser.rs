@@ -218,6 +218,9 @@ impl<'a> SectionReader for NameSectionReader<'a> {
     fn eof(&self) -> bool {
         NameSectionReader::eof(self)
     }
+    fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
     fn original_position(&self) -> usize {
         NameSectionReader::original_position(self)
     }

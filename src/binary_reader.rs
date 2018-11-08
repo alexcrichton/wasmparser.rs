@@ -1177,6 +1177,10 @@ impl<'a> BinaryReader<'a> {
             }
         }
     }
+
+    pub(crate) fn skip_to_end(&mut self) {
+        self.position = self.buffer.len()
+    }
 }
 
 impl<'a> BrTable<'a> {

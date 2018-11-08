@@ -75,6 +75,10 @@ impl<'a> LocalsReader<'a> {
         self.count
     }
 
+    pub fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
+
     pub fn read(&mut self) -> Result<(u32, Type)> {
         let count = self.reader.read_var_u32()?;
         let value_type = self.reader.read_type()?;
@@ -95,7 +99,6 @@ impl<'a> IntoIterator for LocalsReader<'a> {
         LocalsIterator {
             reader: self,
             left: count,
-            err: false,
         }
     }
 }
@@ -103,18 +106,21 @@ impl<'a> IntoIterator for LocalsReader<'a> {
 pub struct LocalsIterator<'a> {
     reader: LocalsReader<'a>,
     left: u32,
-    err: bool,
 }
 
 impl<'a> Iterator for LocalsIterator<'a> {
     type Item = Result<(u32, Type)>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.err || self.left == 0 {
+        if self.left == 0 {
             return None;
         }
         let result = self.reader.read();
-        self.err = result.is_err();
-        self.left -= 1;
+        if result.is_err() {
+            self.reader.skip_to_end();
+            self.left = 0;
+        } else {
+            self.left -= 1;
+        }
         Some(result)
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -192,6 +198,9 @@ impl<'a> SectionReader for CodeSectionReader<'a> {
     }
     fn eof(&self) -> bool {
         self.reader.eof()
+    }
+    fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
     }
     fn original_position(&self) -> usize {
         CodeSectionReader::original_position(self)

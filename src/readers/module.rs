@@ -254,6 +254,10 @@ impl<'a> ModuleReader<'a> {
         self.read_ahead.is_none() && self.reader.eof()
     }
 
+    pub fn skip_to_end(&mut self) {
+        self.reader.skip_to_end();
+    }
+
     fn verify_section_end(&self, end: usize) -> Result<()> {
         if self.reader.buffer.len() < end {
             return Err(BinaryReaderError {
@@ -362,16 +366,12 @@ impl<'a> IntoIterator for ModuleReader<'a> {
     type Item = Result<Section<'a>>;
     type IntoIter = ModuleIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        ModuleIterator {
-            reader: self,
-            err: false,
-        }
+        ModuleIterator { reader: self }
     }
 }
 
 pub struct ModuleIterator<'a> {
     reader: ModuleReader<'a>,
-    err: bool,
 }
 
 impl<'a> Iterator for ModuleIterator<'a> {
@@ -390,11 +390,13 @@ impl<'a> Iterator for ModuleIterator<'a> {
     /// }
     /// ```
     fn next(&mut self) -> Option<Self::Item> {
-        if self.err || self.reader.eof() {
+        if self.reader.eof() {
             return None;
         }
         let result = self.reader.read();
-        self.err = result.is_err();
+        if result.is_err() {
+            self.reader.skip_to_end();
+        }
         Some(result)
     }
 }
